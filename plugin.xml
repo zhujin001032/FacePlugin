@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="com.jasonhe.facePlugin" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+<name>FacePlugin</name>
+<description>facePlugin scan face for Android</description>
+<license>JasonHE</license>
+
+<keywords>cordova,face</keywords>
+<!--www文件夹下js的配置 主要作用是用于能够找到该js文件 其中clobbers中的target是用于你的h5应用调用js中的方法的变量 可以自定义该tag-->
+<js-module name="FacePlugin" src="www/FacePlugin.js">
+    <clobbers target="FacePlugin" />
+</js-module>
+<!--android平台的配置-->
+<platform name="android">
+
+    <!--config-file 是把你android平台的java文件配置进去 feature中的name可以自定义-->
+    <config-file target="res/xml/config.xml" parent="/*">
+        <feature name="FacePlugin" >
+            <param name="android-package" value="com.jasonhe.facePlugin.FacePlugin"/>
+            <param name="onload" value="true" />
+        </feature>
+    </config-file>
+    <config-file target="AndroidManifest.xml" parent="/*">
+        <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+        <uses-permission android:name="android.permission.CAMERA"/>
+    </config-file>
+    <!--source-file 其中 src中的目录是你插件java文件的目录 target－dir是把你插件的类文件在cordova工程中的目录，记住om/jasonhe/facePlugin一定要是你自己的文件的包名-->
+    <source-file src="src/android/FacePlugin.java" target-dir="src/com/jasonhe/facePlugin" />
+<!--    其中src是指文件在该目录下的路径，后面的target-dir是被加载调用的工程下的目标路径。-->
+<!--    当然还可以添加一些drawable和layout以及so文件-->
+<!--    <source-file src="src/android/libs/armeabi/liba01jni.so" target-dir="libs/armeabi" />-->
+<!--      <source-file src="src/android/anim/progressanmi.xml" target-dir="res/anim" />-->
+<!--    <source-file src="src/android/drawable-hdpi/pgsbar5.png" target-dir="res/drawable-hdpi" />-->
+<!--    <source-file src="src/android/layout/pin_dialog.xml" target-dir="res/layout" />-->
+    
+</platform>
+<author>Jason HE</author>
+</plugin>
