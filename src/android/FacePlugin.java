@@ -2,6 +2,8 @@ package com.jasonhe.facePlugin;
 import org.apache.cordova.PermissionHelper;
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.FragmentManager;
+import android.app.FragmentTransaction;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -13,16 +15,26 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.TypedValue;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.widget.FrameLayout;
 import android.widget.Toast;
+
 
 import com.sensetime.liveness.silent.SilentLivenessActivity;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 
 
 import static android.app.Activity.RESULT_CANCELED;
@@ -30,12 +42,16 @@ import static android.app.Activity.RESULT_CANCELED;
 /**
  * This class echoes a string called from JavaScript.
  */
-public class FacePlugin extends CordovaPlugin {
-
+public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.ScanFaceListener {
+    private static final String TAG = "FacePlugin";
     private static final int PERMISSIONS_REQUEST_CODE = 10086;
     private boolean mInterrupt = false; // 中断
+    private SilentLivenessActivity fragment = null;
+    private int containerViewId = 2030; //<- set to random number to prevent conflict with other plugins
+
     Intent silentLivenessIntent;
     CallbackContext callbackContext;
+    JSONArray args;
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("scanFace")) {
@@ -43,22 +59,64 @@ public class FacePlugin extends CordovaPlugin {
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
             this.callbackContext.sendPluginResult(pluginResult);
-            String message = args.getString(0);
-            this.scanFace(message, callbackContext);
+            this.args = args;
+            this.checkPermissions();
             return true;
         }
         return false;
     }
-    @SuppressLint("InlinedApi")
-    private void scanFace(String message, CallbackContext callbackContext) {
-//        if (message != null && message.length() > 0) {
-//            callbackContext.success(message);
-//        } else {
-//            callbackContext.error("Expected one non-empty string argument.");
-//        }
-        checkPermissions();
 
+    @SuppressLint("InlinedApi")
+    private boolean startCamera(int x, int y, int width, int height) {
+        Log.d(TAG, "start camera action");
+
+        if (fragment != null) {
+            callbackContext.error("Camera already started");
+            return true;
+        }
+
+        fragment = new SilentLivenessActivity();
+        DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
+
+        // offset
+        int computedX = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, metrics);
+        int computedY = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, y, metrics);
+
+        // size
+        int computedWidth = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, width, metrics);
+        int computedHeight = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, height, metrics);
+
+        fragment.setRect(computedX, computedY, computedWidth, computedHeight);
+        fragment.setEventListener(this);
+
+        cordova.getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                //create or update the layout params for the container view
+                FrameLayout containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
+                if(containerView == null){
+                    containerView = new FrameLayout(cordova.getActivity().getApplicationContext());
+                    containerView.setId(containerViewId);
+
+                    FrameLayout.LayoutParams containerLayoutParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                    cordova.getActivity().addContentView(containerView, containerLayoutParams);
+                }
+                //set camera back to front
+//                containerView.setAlpha(opacity);
+                containerView.bringToFront();
+                //add the fragment to the container
+                FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                fragmentTransaction.replace(containerView.getId(), fragment);
+                fragmentTransaction.commit();
+            }
+        });
+
+        return true;
     }
+
+
 
     @SuppressLint("InlinedApi")
     private void checkPermissions() {
@@ -72,105 +130,42 @@ public class FacePlugin extends CordovaPlugin {
             permissions[1] = Manifest.permission.CAMERA;
             PermissionHelper.requestPermissions(this, PERMISSIONS_REQUEST_CODE, permissions);
         }else {
-            startDetectionActivity();
+
+            try {
+                this.startCamera(this.args.getInt(0), args.getInt(1), args.getInt(2), args.getInt(3));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
         }
 
     }
 
 
-    @SuppressLint("InlinedApi")
-    private void startDetectionActivity() {
+  
 
-        cordova.startActivityForResult(this, this.silentLivenessIntent, 0);
+    @Override
+    public void onScanFace(String face) {
 
-    }
-    public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        switch (resultCode) {
-            case RESULT_CANCELED:
-            {
-                this.mInterrupt = false;
-                this.callbackContext.error("RESULT_CANCELED");
-            }
-
-            break;
-            case SilentLivenessActivity.CANCEL_INITIATIVE:{
-                this.mInterrupt = true;
-                this.callbackContext.error("CANCEL_INITIATIVE");
-            }
-
-            break;
-            default:
-            {
-                this.mInterrupt = false;
-                if (intent != null && !intent.getBooleanExtra(SilentLivenessActivity.RESULT_DEAL_ERROR_INNER, false)) {
-                    final File imageResultFile = new File(SilentLivenessActivity.FILE_IMAGE);
-                    if (imageResultFile.exists()) {
-                        final Bitmap source = BitmapFactory.decodeFile(SilentLivenessActivity.FILE_IMAGE);
-
-                        callbackContext.success("data:image/jpeg;base64,base64" + getBase64OfImage(source));
-                    }
-
-                }
-            }
-
-            break;
-        }
-    }
-    private Bitmap getResizedBitmap(Bitmap bm, float factor) {
-        int width = bm.getWidth();
-        int height = bm.getHeight();
-        // create a matrix for the manipulation
-        Matrix matrix = new Matrix();
-        // resize the bit map
-        matrix.postScale(factor, factor);
-        // recreate the new Bitmap
-        return Bitmap.createBitmap(bm, 0, 0, width, height, matrix, false);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, face);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
     }
 
-    private String getBase64OfImage(Bitmap bm) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bm.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP);
+    @Override
+    public void onScanFaceError(String message) {
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR, message);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
+
     }
 
-    /**
-     * Choosing a picture launches another Activity, so we need to implement the
-     * save/restore APIs to handle the case where the CordovaActivity is killed by the OS
-     * before we get the launched Activity's result.
-     *
-     *
-     */
-    public void onRestoreStateForActivityResult(Bundle state, CallbackContext callbackContext) {
-        this.callbackContext = callbackContext;
+    @Override
+    public void onScanFaceTips(String message) {
+
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR, message);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
     }
-
-
-    public void onRequestPermissionResult(int requestCode,
-                                          String[] permissions,
-                                          int[] grantResults) throws JSONException {
-
-        try {
-            for(int i=0;i<grantResults.length;i++){
-                if (grantResults[i] == PackageManager.PERMISSION_DENIED) {
-                    Log.d("FacePlugin", "Permission not granted by the user");
-                    // Tell the JS layer that something went wrong...
-                    this.callbackContext.error("PERMISSION_DENIED");
-
-                    return;
-                }
-            }
-
-            switch (requestCode) {
-                case PERMISSIONS_REQUEST_CODE:
-                    Log.d("FacePlugin", "User granted the permission for READ_EXTERNAL_STORAGE");
-                    cordova.startActivityForResult(this, this.silentLivenessIntent, 0);
-
-                    break;
-            }
-        } catch (Exception e) {
-            Log.e("ImagePicker:", e.getMessage());
-        }
-    }
-
 }
