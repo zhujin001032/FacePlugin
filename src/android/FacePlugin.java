@@ -19,6 +19,8 @@ import android.util.Base64;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.sensetime.liveness.silent.SilentLivenessActivity;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 
@@ -65,16 +67,14 @@ public class FacePlugin extends CordovaPlugin {
 
         if (!PermissionHelper.hasPermission(this,Manifest.permission.CAMERA)){
             Toast.makeText(cordova.getContext(), "没有相机权限", Toast.LENGTH_LONG).show();
-
-            startDetectionActivity();
-        }else {
             String[] permissions = new String[2];
             permissions[0] = Manifest.permission.WRITE_EXTERNAL_STORAGE;
             permissions[1] = Manifest.permission.CAMERA;
             PermissionHelper.requestPermissions(this, PERMISSIONS_REQUEST_CODE, permissions);
-
+        }else {
+            startDetectionActivity();
         }
-       
+
     }
 
 
@@ -92,28 +92,28 @@ public class FacePlugin extends CordovaPlugin {
                 this.callbackContext.error("RESULT_CANCELED");
             }
 
-                break;
+            break;
             case SilentLivenessActivity.CANCEL_INITIATIVE:{
                 this.mInterrupt = true;
                 this.callbackContext.error("CANCEL_INITIATIVE");
             }
 
-                break;
+            break;
             default:
-                {
-                    this.mInterrupt = false;
-                    if (intent != null && !intent.getBooleanExtra(SilentLivenessActivity.RESULT_DEAL_ERROR_INNER, false)) {
-                        final File imageResultFile = new File(SilentLivenessActivity.FILE_IMAGE);
-                        if (imageResultFile.exists()) {
-                            final Bitmap source = BitmapFactory.decodeFile(SilentLivenessActivity.FILE_IMAGE);
-                            getBase64OfImage(source);
-                            callbackContext.success(getBase64OfImage(source));
-                        }
+            {
+                this.mInterrupt = false;
+                if (intent != null && !intent.getBooleanExtra(SilentLivenessActivity.RESULT_DEAL_ERROR_INNER, false)) {
+                    final File imageResultFile = new File(SilentLivenessActivity.FILE_IMAGE);
+                    if (imageResultFile.exists()) {
+                        final Bitmap source = BitmapFactory.decodeFile(SilentLivenessActivity.FILE_IMAGE);
 
+                        callbackContext.success("data:image/jpeg;base64,base64" + getBase64OfImage(source));
                     }
-                }
 
-                break;
+                }
+            }
+
+            break;
         }
     }
     private Bitmap getResizedBitmap(Bitmap bm, float factor) {
@@ -154,8 +154,8 @@ public class FacePlugin extends CordovaPlugin {
             for(int i=0;i<grantResults.length;i++){
                 if (grantResults[i] == PackageManager.PERMISSION_DENIED) {
                     Log.d("FacePlugin", "Permission not granted by the user");
-                        // Tell the JS layer that something went wrong...
-                        this.callbackContext.error("PERMISSION_DENIED");
+                    // Tell the JS layer that something went wrong...
+                    this.callbackContext.error("PERMISSION_DENIED");
 
                     return;
                 }
