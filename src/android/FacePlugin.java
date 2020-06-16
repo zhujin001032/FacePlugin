@@ -31,6 +31,7 @@ import android.widget.Toast;
 
 
 import com.sensetime.liveness.silent.SilentLivenessActivity;
+import com.sensetime.senseid.sdk.liveness.silent.common.type.ResultCode;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -64,7 +65,7 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
             return true;
         } else  if (action.equals("hideCamera")) {
             return this.hideCamera(callbackContext);
-            
+
         } else  if (action.equals("showCamera")) {
             return this.showCamera(callbackContext);
         }
@@ -80,12 +81,12 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         return true;
     }
 
-    
+
     private boolean hideCamera(CallbackContext callbackContext) {
         if(this.hasView(callbackContext) == false){
             return true;
         }
-
+        fragment.stop = true;
         FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.hide(fragment);
@@ -99,7 +100,8 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         if(this.hasView(callbackContext) == false){
             return true;
         }
-
+        fragment.stop = false;
+        fragment.reBegin(ResultCode.OK);
         FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.show(fragment);
@@ -108,7 +110,7 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         callbackContext.success();
         return true;
     }
-    
+
     @SuppressLint("InlinedApi")
     private boolean startCamera(int x, int y, int width, int height) {
         Log.d(TAG, "start camera action");
