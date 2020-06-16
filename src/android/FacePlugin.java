@@ -74,7 +74,9 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
 
     private boolean hasView(CallbackContext callbackContext) {
         if(fragment == null) {
-            callbackContext.error("No preview");
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR,"预览不存在");
+            pluginResult.setKeepCallback(true);
+            this.callbackContext.sendPluginResult(pluginResult);
             return false;
         }
 
@@ -92,7 +94,9 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         fragmentTransaction.hide(fragment);
         fragmentTransaction.commit();
 
-        callbackContext.success();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
         return true;
     }
 
@@ -107,7 +111,9 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         fragmentTransaction.show(fragment);
         fragmentTransaction.commit();
 
-        callbackContext.success();
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
+        pluginResult.setKeepCallback(true);
+        this.callbackContext.sendPluginResult(pluginResult);
         return true;
     }
 
@@ -116,7 +122,9 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         Log.d(TAG, "start camera action");
 
         if (fragment != null) {
-            callbackContext.error("Camera already started");
+            PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR, "相机已经开启");
+            pluginResult.setKeepCallback(true);
+            this.callbackContext.sendPluginResult(pluginResult);
             return true;
         }
 
