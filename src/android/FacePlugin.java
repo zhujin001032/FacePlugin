@@ -62,10 +62,53 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
             this.args = args;
             this.checkPermissions();
             return true;
+        } else  if (action.equals("hideCamera")) {
+            return this.hideCamera(callbackContext);
+            
+        } else  if (action.equals("showCamera")) {
+            return this.showCamera(callbackContext);
         }
         return false;
     }
 
+    private boolean hasView(CallbackContext callbackContext) {
+        if(fragment == null) {
+            callbackContext.error("No preview");
+            return false;
+        }
+
+        return true;
+    }
+
+    
+    private boolean hideCamera(CallbackContext callbackContext) {
+        if(this.hasView(callbackContext) == false){
+            return true;
+        }
+
+        FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.hide(fragment);
+        fragmentTransaction.commit();
+
+        callbackContext.success();
+        return true;
+    }
+
+    private boolean showCamera(CallbackContext callbackContext) {
+        if(this.hasView(callbackContext) == false){
+            return true;
+        }
+
+        FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
+        FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+        fragmentTransaction.show(fragment);
+        fragmentTransaction.commit();
+
+        callbackContext.success();
+        return true;
+    }
+    
     @SuppressLint("InlinedApi")
     private boolean startCamera(int x, int y, int width, int height) {
         Log.d(TAG, "start camera action");
