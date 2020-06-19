@@ -55,8 +55,8 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
     JSONArray args;
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+        this.callbackContext = callbackContext;
         if (action.equals("scanFace")) {
-            this.callbackContext = callbackContext;
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
             this.callbackContext.sendPluginResult(pluginResult);
