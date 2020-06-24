@@ -4,8 +4,12 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.ContentUris;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -18,7 +22,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.hardware.Camera;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -56,6 +62,7 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         this.callbackContext = callbackContext;
+
         if (action.equals("scanFace")) {
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
@@ -132,12 +139,12 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
 
         // offset
-        int computedX = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, x, metrics);
-        int computedY = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, y, metrics);
+        int computedX = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 0, metrics);
+        int computedY = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 0, metrics);
 
         // size
-        int computedWidth = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, width, metrics);
-        int computedHeight = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, height, metrics);
+        int computedWidth = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 150, metrics);
+        int computedHeight = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 200, metrics);
 
         fragment.setRect(computedX, computedY, computedWidth, computedHeight);
         fragment.setEventListener(this);
@@ -199,8 +206,9 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
 
     @Override
     public void onScanFace(String face) {
-
-        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, face);
+        Uri ur = getMediaUriFromPath(cordova.getContext(),face);
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, String.valueOf(ur));
+//        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, String.valueOf(face));
         pluginResult.setKeepCallback(true);
         this.callbackContext.sendPluginResult(pluginResult);
     }
@@ -221,4 +229,31 @@ public class FacePlugin extends CordovaPlugin implements SilentLivenessActivity.
         pluginResult.setKeepCallback(true);
         this.callbackContext.sendPluginResult(pluginResult);
     }
+
+    /***
+     * 将指定路径的图片转uri
+     * @param context
+     * @param path ，指定图片(或文件)的路径
+     * @return
+     */
+    public static Uri getMediaUriFromPath(Context context, String path) {
+        Cursor cursor = context.getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                new String[] { MediaStore.Images.Media._ID }, MediaStore.Images.Media.DATA + "=? ",
+                new String[] { path }, null);
+        if (cursor != null && cursor.moveToFirst()) {
+            int id = cursor.getInt(cursor.getColumnIndex(MediaStore.MediaColumns._ID));
+            Uri baseUri = Uri.parse("content://media/external/images/media");
+            return Uri.withAppendedPath(baseUri, "" + id);
+        } else {
+            if (new File(path).exists()) {
+                ContentValues values = new ContentValues();
+                values.put(MediaStore.Images.Media.DATA, path);
+                return context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            } else {
+                return null;
+            }
+        }
+
+    }
+
 }
